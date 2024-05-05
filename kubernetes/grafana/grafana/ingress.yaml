@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  generation: 1
+  labels:
+    io.portainer.kubernetes.ingress.owner: admin
+  name: grafana
+  namespace: otel
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: k3sotel.local
+    http:
+      paths:
+      - backend:
+          service:
+            name: grafana
+            port:
+              number: 80
+        path: /grafana/
+        pathType: Prefix

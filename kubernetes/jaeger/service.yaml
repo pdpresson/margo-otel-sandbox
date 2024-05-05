@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+    name: jaaeger-jaeger-console
+    namespace: otel
+    annotations:
+      meta.helm.sh/release-name: jaaeger
+      meta.helm.sh/release-namespace: otel
+    labels:
+      app.kubernetes.io/component: query
+      app.kubernetes.io/instance: jaaeger
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: jaeger
+      app.kubernetes.io/version: 1.53.0
+      helm.sh/chart: jaeger-2.0.1
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/component: query
+    app.kubernetes.io/instance: jaaeger
+    app.kubernetes.io/name: jaeger
+  ports:
+    - port: 16686 

@@ -1,0 +1,100 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        cors:
+          allowed_origins: ["*"]
+        tls:
+          cert_file: /tmp/certs/server.crt
+          key_file: /tmp/certs/server.key
+        auth:
+          authenticator: basicauth/server
+      grpc:
+        auth:
+          authenticator: basicauth/server
+        tls:
+          cert_file: /tmp/certs/server.crt
+          key_file: /tmp/certs/server.key
+  hostmetrics:
+    scrapers:
+      cpu:
+      disk:
+      filesystem:
+      load:
+      memory:
+      network:
+  docker_stats:
+    collection_interval: 5s
+    timeout: 20s
+  filelog:
+    include: [ /var/lib/docker/containers/*/*-json.log ]
+    include_file_name: false
+    include_file_path: true
+    start_at: end
+    operators:
+      - id: parser-docker
+        timestamp:
+          layout: '%Y-%m-%dT%H:%M:%S.%LZ'
+          parse_from: attributes.time
+        type: json_parser
+      - id: extract_metadata_from_docker_tag
+        parse_from: attributes.attrs.tag
+        regex: ^(?P<name>[^\|]+)\|(?P<image_name>[^\|]+)\|(?P<id>[^$]+)$
+        type: regex_parser
+        if: 'attributes?.attrs?.tag != nil'
+      - from: attributes.name
+        to: resource["docker.container.name"]
+        type: move
+        if: 'attributes?.name != nil'
+      - from: attributes.image_name
+        to: resource["docker.image.name"]
+        type: move
+        if: 'attributes?.image_name != nil'
+      - from: attributes.id
+        to: resource["docker.container.id"]
+        type: move
+        if: 'attributes?.id != nil'
+      - from: attributes.stream
+        to: resource["log.io.stream"]
+        type: move
+      - field: attributes.attrs.tag
+        type: remove
+        if: 'attributes?.attrs?.tag != nil'
+      - from: attributes.log
+        to: body
+        type: move
+exporters:
+  debug:
+    verbosity: normal
+    sampling_initial: 2
+    sampling_thereafter: 500
+  otlp/traces:
+    endpoint: jaeger:14250
+    tls:
+      insecure: true
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    resource_to_telemetry_conversion:
+      enabled: true
+  loki:
+    endpoint: http://loki:3100/loki/api/v1/push
+    tls:
+      insecure: true
+extensions:
+  health_check:
+  basicauth/server:
+    htpasswd: 
+      inline: |
+        myuser:mypassword
+service:
+  extensions: [health_check, basicauth/server]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [debug, otlp/traces]
+    metrics:
+      receivers: [hostmetrics, docker_stats, otlp]
+      exporters: [debug, prometheus]
+    logs:
+      receivers: [otlp, filelog]
+      exporters: [debug, loki]

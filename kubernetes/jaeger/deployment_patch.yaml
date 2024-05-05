@@ -1,0 +1,6 @@
+spec:
+  template:
+    spec:
+      containers:
+        - name: QUERY_BASE_PATH
+          value: /jaeger

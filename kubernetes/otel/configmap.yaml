@@ -1,0 +1,119 @@
+# Please edit the object below. Lines beginning with a '#' will be ignored,
+# and an empty file will abort the edit. If an error occurs while saving this file will be
+# reopened with the relevant failures.
+#
+apiVersion: v1
+data:
+  relay: |
+    exporters:
+      debug: {}
+      otlp/auth:
+        endpoint: 192.168.0.105:4317
+        tls:
+          insecure: false
+          insecure_skip_verify: true
+        auth:
+          authenticator: basicauth/client
+    extensions:
+      health_check:
+        endpoint: ${env:MY_POD_IP}:13133
+      basicauth/client:
+        client_auth:
+          username: myuser
+          password: mypassword
+    processors:
+      batch: {}
+      memory_limiter:
+        check_interval: 5s
+        limit_percentage: 80
+        spike_limit_percentage: 25
+    receivers:
+      jaeger:
+        protocols:
+          grpc:
+            endpoint: ${env:MY_POD_IP}:14250
+          thrift_compact:
+            endpoint: ${env:MY_POD_IP}:6831
+          thrift_http:
+            endpoint: ${env:MY_POD_IP}:14268
+      k8s_cluster:
+        collection_interval: 10s
+      k8sobjects:
+        objects:
+        - exclude_watch_type:
+          - DELETED
+          group: events.k8s.io
+          mode: watch
+          name: events
+      otlp:
+        protocols:
+          grpc:
+            endpoint: ${env:MY_POD_IP}:4317
+          http:
+            endpoint: ${env:MY_POD_IP}:4318
+      prometheus:
+        config:
+          scrape_configs:
+          - job_name: opentelemetry-collector
+            scrape_interval: 10s
+            static_configs:
+            - targets:
+              - ${env:MY_POD_IP}:8888
+      zipkin:
+        endpoint: ${env:MY_POD_IP}:9411
+    service:
+      extensions:
+      - health_check
+      - basicauth/client
+      pipelines:
+        logs:
+          exporters:
+          - debug
+          - otlp/auth
+          processors:
+          - memory_limiter
+          - batch
+          receivers:
+          - otlp
+          - k8sobjects
+        metrics:
+          exporters:
+          - debug
+          - otlp/auth
+          processors:
+          - memory_limiter
+          - batch
+          receivers:
+          - otlp
+          - prometheus
+          - k8s_cluster
+        traces:
+          exporters:
+          - debug
+          - otlp/auth
+          processors:
+          - memory_limiter
+          - batch
+          receivers:
+          - otlp
+          - jaeger
+          - zipkin
+      telemetry:
+        metrics:
+          address: ${env:MY_POD_IP}:8888
+kind: ConfigMap
+metadata:
+  annotations:
+    meta.helm.sh/release-name: otel-collector-cluster
+    meta.helm.sh/release-namespace: otel
+  creationTimestamp: "2024-04-18T15:54:56Z"
+  labels:
+    app.kubernetes.io/instance: otel-collector-cluster
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: opentelemetry-collector
+    app.kubernetes.io/version: 0.98.0
+    helm.sh/chart: opentelemetry-collector-0.87.2
+  name: otel-collector-cluster-opentelemetry-collector
+  namespace: otel
+  resourceVersion: "1509110"
+  uid: 5ed8e673-5f69-4cae-a0c2-5561657055d7

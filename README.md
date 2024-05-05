@@ -1,2 +1,5 @@
-# margo-otel-sandbox
-Sandbox for researching the use of OTEL with Margo
+# Margo OTEL Sandbox
+
+This is sandbox environment for doing research for supporting Open Telemetry with [Margo](https://github.com/margo/specification).
+
+It it is not intended to represent any type reference implementation and is only used for research.
